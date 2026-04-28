@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VoteVille</title>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --sky: #87CEEB;
+    --grass: #5CB85C;
+    --grass-dark: #4a9a4a;
+    --wood: #8B6914;
+    --wood-light: #C8922A;
+    --wood-bg: #D4A843;
+    --cream: #FFF8E7;
+    --cream-dark: #F0E6CC;
+    --green-btn: #5CB85C;
+    --green-btn-dark: #449944;
+    --red-btn: #E05555;
+    --red-btn-dark: #C03030;
+    --gold: #FFD700;
+    --text-dark: #3D2B1F;
+    --text-mid: #5C3D2E;
+    --shadow: rgba(0,0,0,0.25);
+    --panel-bg: rgba(139, 105, 20, 0.92);
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: 'Nunito', sans-serif;
+    background: var(--sky);
+    min-height: 100vh;
+    overflow-y: auto;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  /* ── VILLAGE BACKGROUND ── */
+  #village-bg {
+    position: fixed;
+    inset: 0;
+    background: linear-gradient(180deg, #B8E4F7 0%, #87CEEB 40%, #6DC96D 65%, #5CB85C 100%);
+    z-index: 0;
+  }
+
+  .cloud {
+    position: absolute;
+    background: white;
+    border-radius: 50px;
+    opacity: 0.85;
+    animation: drift linear infinite;
+  }
+  .cloud::before, .cloud::after {
+    content: '';
+    position: absolute;
+    background: white;
+    border-radius: 50%;
+  }
+  @keyframes drift { from { transform: translateX(-200px); } to { transform: translateX(110vw); } }
+
+  .hill {
+    position: absolute;
+    border-radius: 50%;
+    background: #6DC96D;
+  }
+
+  /* ── VILLAGE SCENE ── */
+  #village-scene {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: 55vh;
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  /* SVG buildings rendered inline */
+
+  /* ── SCREENS ── */
+  #app {
+    position: relative;
+    z-index: 10;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 80px 20px 60px 20px;
+  }
+
+  .screen {
+    display: none;
+    width: 100%;
+    max-width: 520px;
+    animation: screenIn 0.4s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .screen.active { display: flex; flex-direction: column; align-items: center; gap: 16px; }
+  @keyframes screenIn {
+    from { opacity: 0; transform: scale(0.88) translateY(20px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+
+  /* ── WOOD PANEL ── */
+  .wood-panel {
+    background: linear-gradient(160deg, #C8922A 0%, #A0701A 40%, #8B6014 100%);
+    border-radius: 20px;
+    border: 4px solid #6B4A10;
+    box-shadow: 0 8px 0 #4a3008, 0 12px 30px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,220,100,0.3);
+    padding: 24px;
+    width: 100%;
+    position: relative;
+    overflow: hidden;
+  }
+  .wood-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0,0,0,0.04) 40px, rgba(0,0,0,0.04) 41px);
+    pointer-events: none;
+  }
+
+  /* ── BANNER / TITLE SIGN ── */
+  .sign-banner {
+    background: linear-gradient(160deg, #C8922A 0%, #A0701A 50%, #8B6014 100%);
+    border: 4px solid #6B4A10;
+    border-radius: 16px;
+    box-shadow: 0 6px 0 #4a3008, 0 10px 20px rgba(0,0,0,0.3);
+    padding: 12px 28px;
+    text-align: center;
+    position: relative;
+  }
+  .sign-banner::before, .sign-banner::after {
+    content: '●';
+    position: absolute;
+    top: 50%; transform: translateY(-50%);
+    color: #6B4A10;
+    font-size: 10px;
+  }
+  .sign-banner::before { left: 10px; }
+  .sign-banner::after  { right: 10px; }
+
+  .sign-banner h1, .sign-banner h2 {
+    font-family: 'Fredoka One', cursive;
+    color: #FFF0C0;
+    text-shadow: 2px 3px 0 #6B4A10, 0 0 20px rgba(255,220,100,0.3);
+    letter-spacing: 1px;
+  }
+  .sign-banner h1 { font-size: clamp(2rem, 8vw, 3rem); }
+  .sign-banner h2 { font-size: clamp(1.1rem, 4vw, 1.5rem); }
+
+  /* ── CREAM CARD ── */
+  .cream-card {
+    background: var(--cream);
+    border: 3px solid var(--cream-dark);
+    border-radius: 16px;
+    padding: 18px;
+    width: 100%;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.08);
+  }
+
+  /* ── INPUT FIELD ── */
+  .village-input {
+    width: 100%;
+    background: var(--cream);
+    border: 3px solid #C8922A;
+    border-radius: 12px;
+    padding: 14px 18px;
+    font-family: 'Nunito', sans-serif;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--text-dark);
+    outline: none;
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.08);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .village-input:focus {
+    border-color: var(--green-btn);
+    box-shadow: inset 0 2px 6px rgba(0,0,0,0.08), 0 0 0 3px rgba(92,184,92,0.3);
+  }
+  .village-input::placeholder { color: #B09060; }
+
+  /* ── BUTTONS ── */
+  .btn {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.15rem;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 50px;
+    cursor: pointer;
+    padding: 14px 32px;
+    transition: transform 0.12s, box-shadow 0.12s;
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+  .btn:active { transform: translateY(3px); }
+
+  .btn-green {
+    background: linear-gradient(180deg, #6DD16D 0%, #5CB85C 50%, #4aab4a 100%);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 5px 0 #2d7a2d, 0 8px 20px rgba(0,0,0,0.2);
+    width: 100%;
+  }
+  .btn-green:hover { transform: translateY(-2px); box-shadow: 0 7px 0 #2d7a2d, 0 12px 24px rgba(0,0,0,0.25); }
+  .btn-green:active { box-shadow: 0 2px 0 #2d7a2d; }
+
+  .btn-red {
+    background: linear-gradient(180deg, #E86666 0%, #E05555 50%, #cc4444 100%);
+    color: white;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    box-shadow: 0 5px 0 #8B2020, 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .btn-red:hover { transform: translateY(-2px); }
+  .btn-red:active { box-shadow: 0 2px 0 #8B2020; }
+
+  .btn-wood {
+    background: linear-gradient(180deg, #D4A843 0%, #C8922A 50%, #A0701A 100%);
+    color: #FFF0C0;
+    text-shadow: 0 1px 3px rgba(0,0,0,0.4);
+    box-shadow: 0 5px 0 #6B4A10, 0 8px 20px rgba(0,0,0,0.2);
+  }
+  .btn-wood:hover { transform: translateY(-2px); }
+
+  .btn-sm {
+    font-size: 0.9rem;
+    padding: 8px 18px;
+    border-radius: 30px;
+  }
+
+  /* ── ROLE CARDS ── */
+  .roles-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+  @media (max-width: 480px) { .roles-grid { grid-template-columns: repeat(3, 1fr); } }
+
+  .role-card {
+    background: linear-gradient(180deg, #E8C86A 0%, #D4A843 100%);
+    border: 3px solid #A0701A;
+    border-radius: 16px;
+    padding: 12px 6px;
+    cursor: pointer;
+    text-align: center;
+    transition: transform 0.15s, box-shadow 0.15s;
+    box-shadow: 0 4px 0 #6B4A10;
+  }
+  .role-card:hover { transform: translateY(-4px) scale(1.04); box-shadow: 0 8px 0 #6B4A10; }
+  .role-card.selected {
+    background: linear-gradient(180deg, #7FD47F 0%, #5CB85C 100%);
+    border-color: #2d7a2d;
+    box-shadow: 0 4px 0 #1a5a1a;
+    transform: translateY(-2px) scale(1.03);
+  }
+  .role-icon { font-size: 2rem; display: block; margin-bottom: 4px; }
+  .role-name {
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.72rem;
+    color: var(--text-dark);
+    line-height: 1.2;
+  }
+
+  /* ── FOX MASCOT ── */
+  .fox-wrap {
+    display: flex;
+    align-items: flex-end;
+    gap: 12px;
+    width: 100%;
+  }
+  .fox-svg { width: 80px; flex-shrink: 0; }
+  .fox-bubble {
+    background: white;
+    border: 3px solid #C8922A;
+    border-radius: 18px 18px 18px 4px;
+    padding: 12px 16px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    flex: 1;
+    position: relative;
+  }
+  .fox-bubble::after {
+    content: '';
+    position: absolute;
+    bottom: -3px; left: -12px;
+    width: 16px; height: 16px;
+    background: white;
+    border-left: 3px solid #C8922A;
+    border-bottom: 3px solid #C8922A;
+    border-radius: 0 0 0 8px;
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+  }
+
+  /* ── SCENARIO CARD ── */
+  .scenario-box {
+    background: linear-gradient(135deg, #FFF8E7 0%, #FFF0CC 100%);
+    border: 3px solid #C8922A;
+    border-radius: 18px;
+    padding: 20px;
+    width: 100%;
+    text-align: center;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+  }
+  .scenario-emoji { font-size: 2.5rem; margin-bottom: 8px; }
+  .scenario-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.25rem;
+    color: var(--text-dark);
+    margin-bottom: 6px;
+  }
+  .scenario-desc { font-size: 0.9rem; color: var(--text-mid); font-weight: 600; }
+
+  /* ── OPTION CARDS ── */
+  .options-list { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+
+  .option-card {
+    background: var(--cream);
+    border: 3px solid #C8922A;
+    border-radius: 16px;
+    padding: 14px 16px;
+    cursor: pointer;
+    transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s, background 0.15s;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    box-shadow: 0 3px 0 #A0701A;
+  }
+  .option-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 0 #A0701A, 0 8px 20px rgba(0,0,0,0.15);
+    border-color: var(--green-btn);
+  }
+  .option-card.selected {
+    background: linear-gradient(135deg, #E8F8E8 0%, #D4F0D4 100%);
+    border-color: var(--green-btn);
+    box-shadow: 0 3px 0 #2d7a2d, 0 0 0 3px rgba(92,184,92,0.25);
+    transform: translateY(-2px);
+  }
+  .option-num {
+    background: var(--green-btn);
+    color: white;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.9rem;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+  .option-card.selected .option-num { background: #2d7a2d; }
+  .option-content { flex: 1; }
+  .option-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: var(--text-dark);
+    margin-bottom: 3px;
+  }
+  .option-desc { font-size: 0.82rem; color: var(--text-mid); font-weight: 600; }
+  .option-role-hint {
+    font-size: 0.75rem;
+    color: var(--green-btn-dark);
+    font-weight: 800;
+    margin-top: 4px;
+  }
+
+  /* ── VOTE BARS ── */
+  .vote-result-card {
+    width: 100%;
+    border-radius: 16px;
+    border: 3px solid;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .vote-result-card.winner {
+    background: linear-gradient(135deg, #E8F8E8, #D0F0D0);
+    border-color: var(--green-btn);
+  }
+  .vote-result-card.loser {
+    background: linear-gradient(135deg, #FFF0F0, #FFE0E0);
+    border-color: var(--red-btn);
+  }
+  .vr-header { display: flex; align-items: center; gap: 10px; }
+  .vr-title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: var(--text-dark);
+    flex: 1;
+  }
+  .vr-pct {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+  }
+  .winner .vr-pct { color: var(--green-btn-dark); }
+  .loser  .vr-pct { color: var(--red-btn); }
+  .vote-bar-track {
+    height: 14px;
+    background: rgba(0,0,0,0.1);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .vote-bar-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 1.2s cubic-bezier(0.34,1.1,0.64,1);
+  }
+  .winner .vote-bar-fill { background: linear-gradient(90deg, #5CB85C, #7FD47F); }
+  .loser  .vote-bar-fill { background: linear-gradient(90deg, #E05555, #E87777); }
+  .stars { font-size: 1.3rem; letter-spacing: 2px; }
+
+  /* ── VILLAGE STATS ── */
+  .stats-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+    justify-content: center;
+  }
+  .stat-pill {
+    background: rgba(255,255,255,0.9);
+    border: 2px solid #C8922A;
+    border-radius: 30px;
+    padding: 6px 14px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.88rem;
+    color: var(--text-dark);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  /* ── LOADING DOTS ── */
+  .loading-dots {
+    display: flex; gap: 6px; justify-content: center; padding: 8px 0;
+  }
+  .loading-dots span {
+    width: 10px; height: 10px;
+    background: var(--wood-light);
+    border-radius: 50%;
+    animation: bounce 1s infinite;
+  }
+  .loading-dots span:nth-child(2) { animation-delay: 0.15s; }
+  .loading-dots span:nth-child(3) { animation-delay: 0.30s; }
+  @keyframes bounce { 0%,80%,100% { transform: scale(0.7); opacity: 0.5; } 40% { transform: scale(1.2); opacity: 1; } }
+
+  /* ── PROGRESS / ROUND ── */
+  .round-badge {
+    background: linear-gradient(135deg, #D4A843, #C8922A);
+    border: 3px solid #6B4A10;
+    border-radius: 30px;
+    padding: 6px 20px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 0.9rem;
+    color: #FFF0C0;
+    box-shadow: 0 3px 0 #4a3008;
+    text-align: center;
+  }
+
+  /* ── CONSEQUENCE BOX ── */
+  .consequence-box {
+    background: linear-gradient(135deg, #FFF8E7, #FFF0CC);
+    border: 3px solid #C8922A;
+    border-radius: 16px;
+    padding: 16px;
+    width: 100%;
+    text-align: center;
+  }
+  .consequence-emoji { font-size: 2rem; margin-bottom: 6px; }
+  .consequence-text {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--text-dark);
+    line-height: 1.5;
+  }
+
+  /* ── REFLECTION ── */
+  .reflection-box {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .reflect-q {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.05rem;
+    color: var(--cream);
+    text-align: center;
+  }
+  .reflect-btns {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+  }
+  .reflect-btn {
+    flex: 1;
+    max-width: 130px;
+    border: none;
+    border-radius: 50px;
+    padding: 12px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: transform 0.12s;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+  }
+  .reflect-btn:active { transform: scale(0.95); }
+  .reflect-btn.ja  { background: #5CB85C; color: white; box-shadow: 0 4px 0 #2d7a2d; }
+  .reflect-btn.nee { background: #E05555; color: white; box-shadow: 0 4px 0 #8B2020; }
+  .reflect-btn.selected { transform: scale(1.05); }
+
+  /* ── VILLAGE CHANGED ── */
+  .village-change {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, #E8F8E8, #D4F0D4);
+    border: 3px solid var(--green-btn);
+    border-radius: 16px;
+    text-align: center;
+  }
+  .village-change .title {
+    font-family: 'Fredoka One', cursive;
+    font-size: 1.1rem;
+    color: var(--green-btn-dark);
+    margin-bottom: 6px;
+  }
+  .village-change .detail {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: var(--text-mid);
+  }
+
+  /* ── COIN COUNTER ── */
+  .coin-box {
+    position: fixed;
+    top: 16px; right: 16px;
+    z-index: 100;
+    background: linear-gradient(135deg, #D4A843, #C8922A);
+    border: 3px solid #6B4A10;
+    border-radius: 30px;
+    padding: 8px 16px;
+    font-family: 'Fredoka One', cursive;
+    font-size: 1rem;
+    color: #FFF0C0;
+    box-shadow: 0 4px 0 #4a3008;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* scrollable panel */
+  .scroll-panel { width: 100%; display: flex; flex-direction: column; gap: 12px; }
+  .scroll-panel::-webkit-scrollbar { width: 6px; }
+  .scroll-panel::-webkit-scrollbar-track { background: rgba(0,0,0,0.1); border-radius: 99px; }
+  .scroll-panel::-webkit-scrollbar-thumb { background: #C8922A; border-radius: 99px; }
+
+  /* ── VOTE TALLY during voting ── */
+  .tally-row { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+  .tally-label { font-family:'Fredoka One',cursive; font-size:0.9rem; color: var(--cream); }
+  .tally-count { font-family:'Fredoka One',cursive; font-size:1.1rem; color: var(--gold); }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 600px) {
+    #app { padding: 70px 12px 40px 12px; }
+    .wood-panel { padding: 16px; }
+    .sign-banner { padding: 10px 20px; }
+    .btn { font-size: 1rem; padding: 12px 24px; }
+    .option-card { padding: 12px; }
+    .fox-svg { width: 60px; }
+    .fox-bubble { font-size: 0.84rem; padding: 10px 12px; }
+    .scenario-box { padding: 14px; }
+    .scenario-emoji { font-size: 2rem; }
+    .scenario-title { font-size: 1.05rem; }
+    .stat-pill { font-size: 0.78rem; padding: 5px 10px; }
+    .round-badge { font-size: 0.8rem; padding: 5px 14px; }
+    .coin-box { font-size: 0.85rem; padding: 6px 12px; top: 10px; right: 10px; }
+    .roles-grid { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .role-icon { font-size: 1.6rem; }
+    .role-name { font-size: 0.68rem; }
+    .option-title { font-size: 0.92rem; }
+    .option-desc { font-size: 0.78rem; }
+    .vote-result-card { padding: 12px; }
+    .vr-title { font-size: 0.88rem; }
+    .reflect-btn { font-size: 0.9rem; padding: 10px; }
+    .cream-card { padding: 14px; }
+  }
+
+  @media (min-width: 601px) and (max-width: 900px) {
+    #app { padding: 80px 24px 50px 24px; }
+    .screen { max-width: 560px; }
+    .roles-grid { grid-template-columns: repeat(5, 1fr); }
+  }
+
+  @media (min-width: 901px) {
+    .screen { max-width: 580px; }
+    #app { padding: 90px 40px 60px 40px; }
+  }
+
+  /* Touch-friendly tap targets on mobile */
+  @media (hover: none) {
+    .option-card:hover { transform: none; box-shadow: 0 3px 0 #A0701A; }
+    .btn-green:hover { transform: none; box-shadow: 0 5px 0 #2d7a2d, 0 8px 20px rgba(0,0,0,0.2); }
+    .role-card:hover { transform: none; box-shadow: 0 4px 0 #6B4A10; }
+  }
+
+</style>
+</head>
+<body>
+
+<!-- Village background elements -->
+<div id="village-bg">
+  <!-- Clouds -->
+  <div class="cloud" style="width:90px;height:30px;top:8%;left:-100px;animation-duration:28s;animation-delay:-5s"><div style="position:absolute;width:50px;height:50px;border-radius:50%;background:white;top:-25px;left:15px"></div><div style="position:absolute;width:35px;height:35px;border-radius:50%;background:white;top:-18px;left:40px"></div></div>
+  <div class="cloud" style="width:70px;height:24px;top:14%;left:-100px;animation-duration:35s;animation-delay:-18s"><div style="position:absolute;width:38px;height:38px;border-radius:50%;background:white;top:-20px;left:10px"></div></div>
+  <div class="cloud" style="width:110px;height:34px;top:5%;left:-100px;animation-duration:42s;animation-delay:-30s"><div style="position:absolute;width:58px;height:58px;border-radius:50%;background:white;top:-32px;left:18px"></div><div style="position:absolute;width:40px;height:40px;border-radius:50%;background:white;top:-22px;left:55px"></div></div>
+
+  <!-- Hills -->
+  <div class="hill" style="width:600px;height:300px;bottom:-80px;left:-80px;opacity:0.7;background:#6DC96D"></div>
+  <div class="hill" style="width:500px;height:260px;bottom:-60px;right:-60px;opacity:0.65;background:#70CC70"></div>
+  <div class="hill" style="width:380px;height:200px;bottom:-50px;left:35%;opacity:0.6;background:#68C868"></div>
+</div>
+
+<!-- Coin display (shown after game starts) -->
+<div class="coin-box" id="coin-box" style="display:none">🪙 <span id="coin-display">1000</span></div>
+
+<!-- APP CONTAINER -->
+<div id="app">
+
+  <!-- ════════════════════════════════════════
+       SCREEN 1: WELCOME / START
+  ════════════════════════════════════════ -->
+  <div class="screen active" id="screen-welcome">
+    <div class="sign-banner" style="width:100%">
+      <h1>🏡 Vote Ville</h1>
+    </div>
+
+    <div class="fox-wrap">
+      <svg class="fox-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <!-- Body -->
+        <ellipse cx="40" cy="75" rx="22" ry="20" fill="#E87722"/>
+        <!-- Overall straps -->
+        <rect x="28" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="44" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="25" y="72" width="30" height="14" rx="4" fill="#4488CC"/>
+        <!-- Head -->
+        <ellipse cx="40" cy="45" rx="18" ry="16" fill="#E87722"/>
+        <!-- Ears -->
+        <polygon points="22,35 15,18 30,30" fill="#E87722"/>
+        <polygon points="58,35 65,18 50,30" fill="#E87722"/>
+        <polygon points="24,33 18,20 30,29" fill="#CC3333"/>
+        <polygon points="56,33 62,20 50,29" fill="#CC3333"/>
+        <!-- Face white -->
+        <ellipse cx="40" cy="50" rx="12" ry="10" fill="#FFF0D0"/>
+        <!-- Eyes -->
+        <circle cx="34" cy="42" r="4" fill="white"/>
+        <circle cx="46" cy="42" r="4" fill="white"/>
+        <circle cx="35" cy="43" r="2.5" fill="#2C1810"/>
+        <circle cx="47" cy="43" r="2.5" fill="#2C1810"/>
+        <circle cx="36" cy="42" r="1" fill="white"/>
+        <circle cx="48" cy="42" r="1" fill="white"/>
+        <!-- Nose -->
+        <ellipse cx="40" cy="50" rx="4" ry="3" fill="#CC3333"/>
+        <ellipse cx="40" cy="49" rx="2" ry="1.5" fill="#FF6666"/>
+        <!-- Smile -->
+        <path d="M35,53 Q40,57 45,53" stroke="#2C1810" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <!-- Arms -->
+        <ellipse cx="18" cy="70" rx="8" ry="6" fill="#E87722" transform="rotate(-20,18,70)"/>
+        <ellipse cx="62" cy="68" rx="8" ry="6" fill="#E87722" transform="rotate(20,62,68)"/>
+        <!-- Thumb up right hand -->
+        <circle cx="65" cy="63" r="5" fill="#FFF0D0"/>
+        <rect x="63" y="55" width="4" height="9" rx="2" fill="#FFF0D0"/>
+        <!-- Tail -->
+        <ellipse cx="62" cy="88" rx="10" ry="7" fill="#E87722" transform="rotate(-30,62,88)"/>
+        <ellipse cx="65" cy="86" rx="6" ry="4" fill="white" transform="rotate(-30,65,86)"/>
+      </svg>
+      <div class="fox-bubble">Willkommen in Vote Ville! 🎉<br>Hier entscheide <strong>du</strong>, wie das Dorf wächst!</div>
+    </div>
+
+    <div class="wood-panel">
+      <label style="display:block;margin-bottom:8px;font-family:'Fredoka One',cursive;color:#FFF0C0;font-size:1rem">Dein Name im Dorf:</label>
+      <input class="village-input" id="player-name" type="text" placeholder="z.B. Max, Leila, Finn..." maxlength="20"/>
+    </div>
+
+    <button class="btn btn-green" onclick="goToRoles()">Spiel starten 🚀</button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 2: ROLE SELECTION
+  ════════════════════════════════════════ -->
+  <div class="screen" id="screen-roles">
+    <div class="sign-banner" style="width:100%">
+      <h2>Wähle deine Rolle im Dorf!</h2>
+    </div>
+
+    <div class="roles-grid" id="roles-grid">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="fox-wrap" id="fox-role-hint">
+      <svg class="fox-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="40" cy="75" rx="22" ry="20" fill="#E87722"/>
+        <rect x="28" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="44" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="25" y="72" width="30" height="14" rx="4" fill="#4488CC"/>
+        <ellipse cx="40" cy="45" rx="18" ry="16" fill="#E87722"/>
+        <polygon points="22,35 15,18 30,30" fill="#E87722"/>
+        <polygon points="58,35 65,18 50,30" fill="#E87722"/>
+        <polygon points="24,33 18,20 30,29" fill="#CC3333"/>
+        <polygon points="56,33 62,20 50,29" fill="#CC3333"/>
+        <ellipse cx="40" cy="50" rx="12" ry="10" fill="#FFF0D0"/>
+        <circle cx="34" cy="42" r="4" fill="white"/><circle cx="46" cy="42" r="4" fill="white"/>
+        <circle cx="35" cy="43" r="2.5" fill="#2C1810"/><circle cx="47" cy="43" r="2.5" fill="#2C1810"/>
+        <circle cx="36" cy="42" r="1" fill="white"/><circle cx="48" cy="42" r="1" fill="white"/>
+        <ellipse cx="40" cy="50" rx="4" ry="3" fill="#CC3333"/>
+        <path d="M35,53 Q40,57 45,53" stroke="#2C1810" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="18" cy="70" rx="8" ry="6" fill="#E87722" transform="rotate(-20,18,70)"/>
+        <ellipse cx="62" cy="68" rx="8" ry="6" fill="#E87722" transform="rotate(20,62,68)"/>
+      </svg>
+      <div class="fox-bubble" id="fox-role-text">Klick eine Rolle an, um mehr zu erfahren!</div>
+    </div>
+
+    <button class="btn btn-green" id="btn-confirm-role" onclick="confirmRole()" style="opacity:0.5;pointer-events:none">Rolle bestätigen ✓</button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 3: SCENARIO + AI OPTIONS
+  ════════════════════════════════════════ -->
+  <div class="screen" id="screen-scenario">
+    <div id="round-indicator" class="round-badge">Runde 1 von 3</div>
+
+    <div class="stats-row">
+      <div class="stat-pill">🏡 Dorf-Glück: <span id="stat-happiness">70</span>%</div>
+      <div class="stat-pill">🪙 Budget: <span id="stat-budget">1000</span></div>
+    </div>
+
+    <div class="scenario-box" id="scenario-box">
+      <div class="scenario-emoji" id="sc-emoji">⏳</div>
+      <div class="scenario-title" id="sc-title">Laden...</div>
+      <div class="scenario-desc" id="sc-desc"></div>
+    </div>
+
+    <div class="fox-wrap">
+      <svg class="fox-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="40" cy="75" rx="22" ry="20" fill="#E87722"/>
+        <rect x="28" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="44" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="25" y="72" width="30" height="14" rx="4" fill="#4488CC"/>
+        <ellipse cx="40" cy="45" rx="18" ry="16" fill="#E87722"/>
+        <polygon points="22,35 15,18 30,30" fill="#E87722"/>
+        <polygon points="58,35 65,18 50,30" fill="#E87722"/>
+        <polygon points="24,33 18,20 30,29" fill="#CC3333"/>
+        <polygon points="56,33 62,20 50,29" fill="#CC3333"/>
+        <ellipse cx="40" cy="50" rx="12" ry="10" fill="#FFF0D0"/>
+        <circle cx="34" cy="42" r="4" fill="white"/><circle cx="46" cy="42" r="4" fill="white"/>
+        <circle cx="35" cy="43" r="2.5" fill="#2C1810"/><circle cx="47" cy="43" r="2.5" fill="#2C1810"/>
+        <circle cx="36" cy="42" r="1" fill="white"/><circle cx="48" cy="42" r="1" fill="white"/>
+        <ellipse cx="40" cy="50" rx="4" ry="3" fill="#CC3333"/>
+        <path d="M35,53 Q40,57 45,53" stroke="#2C1810" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="18" cy="70" rx="8" ry="6" fill="#E87722" transform="rotate(-20,18,70)"/>
+        <ellipse cx="62" cy="68" rx="8" ry="6" fill="#E87722" transform="rotate(20,62,68)"/>
+      </svg>
+      <div class="fox-bubble" id="fox-scenario-hint">Ich hole die Vorschläge...</div>
+    </div>
+
+    <div class="options-list" id="options-list">
+      <div class="cream-card" style="text-align:center">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+        <div style="font-family:'Fredoka One',cursive;color:#A0701A;margin-top:6px">KI denkt nach...</div>
+      </div>
+    </div>
+
+    <button class="btn btn-green" id="btn-vote" onclick="castVote()" style="opacity:0.5;pointer-events:none">Abstimmen 🗳️</button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 4: VOTING ANIMATION
+  ════════════════════════════════════════ -->
+  <div class="screen" id="screen-voting">
+    <div class="sign-banner" style="width:100%">
+      <h2>🗳️ Abstimmung läuft!</h2>
+    </div>
+
+    <div class="cream-card" style="text-align:center;padding:24px">
+      <div style="font-size:2rem;margin-bottom:12px">🏛️</div>
+      <div style="font-family:'Fredoka One',cursive;font-size:1.1rem;color:var(--text-dark);margin-bottom:16px">Die Dorfbewohner stimmen ab...</div>
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+    </div>
+
+    <div id="live-tally" class="wood-panel">
+      <!-- tally rows added by JS -->
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 5: RESULTS
+  ════════════════════════════════════════ -->
+  <div class="screen" id="screen-results">
+    <div class="sign-banner" style="width:100%">
+      <h2>📊 Abstimmungsergebnis!</h2>
+    </div>
+
+    <div class="options-list" id="results-list">
+      <!-- populated by JS -->
+    </div>
+
+    <div class="consequence-box" id="consequence-box">
+      <div class="consequence-emoji" id="conseq-emoji">⏳</div>
+      <div style="font-family:'Fredoka One',cursive;color:#A0701A;margin-bottom:6px">Folge für das Dorf:</div>
+      <div class="consequence-text" id="conseq-text">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+
+    <button class="btn btn-green" onclick="goToReflection()">Was habe ich gelernt? 🦊</button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 6: REFLECTION
+  ════════════════════════════════════════ -->
+  <div class="screen" id="screen-reflect">
+    <div class="sign-banner" style="width:100%">
+      <h2>Was hast du gelernt?</h2>
+    </div>
+
+    <div class="fox-wrap">
+      <svg class="fox-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="40" cy="75" rx="22" ry="20" fill="#E87722"/>
+        <rect x="28" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="44" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="25" y="72" width="30" height="14" rx="4" fill="#4488CC"/>
+        <ellipse cx="40" cy="45" rx="18" ry="16" fill="#E87722"/>
+        <polygon points="22,35 15,18 30,30" fill="#E87722"/>
+        <polygon points="58,35 65,18 50,30" fill="#E87722"/>
+        <polygon points="24,33 18,20 30,29" fill="#CC3333"/>
+        <polygon points="56,33 62,20 50,29" fill="#CC3333"/>
+        <ellipse cx="40" cy="50" rx="12" ry="10" fill="#FFF0D0"/>
+        <circle cx="34" cy="42" r="4" fill="white"/><circle cx="46" cy="42" r="4" fill="white"/>
+        <circle cx="35" cy="43" r="2.5" fill="#2C1810"/><circle cx="47" cy="43" r="2.5" fill="#2C1810"/>
+        <circle cx="36" cy="42" r="1" fill="white"/><circle cx="48" cy="42" r="1" fill="white"/>
+        <ellipse cx="40" cy="50" rx="4" ry="3" fill="#CC3333"/>
+        <path d="M35,53 Q40,57 45,53" stroke="#2C1810" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="18" cy="70" rx="8" ry="6" fill="#E87722" transform="rotate(-20,18,70)"/>
+        <ellipse cx="62" cy="68" rx="8" ry="6" fill="#E87722" transform="rotate(20,62,68)"/>
+      </svg>
+      <div class="fox-bubble" id="fox-reflect-question">
+        <div class="loading-dots"><span></span><span></span><span></span></div>
+      </div>
+    </div>
+
+    <div class="wood-panel">
+      <div class="reflect-q" id="reflect-good-q">War die Entscheidung gut fürs Dorf?</div>
+      <div class="reflect-btns" style="margin-top:12px">
+        <button class="reflect-btn ja" id="btn-ja"  onclick="reflectVote('ja')">👍 Ja!</button>
+        <button class="reflect-btn nee" id="btn-nee" onclick="reflectVote('nee')">👎 Nee</button>
+      </div>
+
+      <div id="reflect-response" style="display:none;margin-top:14px">
+        <div class="fox-bubble" style="border-radius:14px" id="reflect-response-text">
+          <div class="loading-dots"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+    </div>
+
+    <button class="btn btn-green" id="btn-next-round" onclick="nextRound()" style="display:none">
+      Weiter zum Dorf 🏡
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════
+       SCREEN 7: GAME OVER / SUMMARY
+  ════════════════════════════════════════ -->
+  <div class="screen" id="screen-gameover">
+    <div class="sign-banner" style="width:100%">
+      <h2>🎉 Dorf-Zusammenfassung!</h2>
+    </div>
+
+    <div class="wood-panel">
+      <div style="text-align:center;margin-bottom:12px">
+        <div id="final-village-icon" style="font-size:3rem">🏡</div>
+        <div style="font-family:'Fredoka One',cursive;color:#FFF0C0;font-size:1.2rem;margin-top:8px">Dein Dorf nach 3 Runden:</div>
+      </div>
+      <div id="final-stats" class="stats-row" style="justify-content:center;flex-wrap:wrap;gap:8px"></div>
+    </div>
+
+    <div class="cream-card" id="final-summary-box">
+      <div style="font-family:'Fredoka One',cursive;color:#A0701A;margin-bottom:8px;font-size:1rem">📜 Deine Entscheidungen:</div>
+      <div id="final-decisions-list" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+
+    <div class="fox-wrap">
+      <svg class="fox-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+        <ellipse cx="40" cy="75" rx="22" ry="20" fill="#E87722"/>
+        <rect x="28" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="44" y="62" width="8" height="25" rx="3" fill="#4488CC"/>
+        <rect x="25" y="72" width="30" height="14" rx="4" fill="#4488CC"/>
+        <ellipse cx="40" cy="45" rx="18" ry="16" fill="#E87722"/>
+        <polygon points="22,35 15,18 30,30" fill="#E87722"/>
+        <polygon points="58,35 65,18 50,30" fill="#E87722"/>
+        <polygon points="24,33 18,20 30,29" fill="#CC3333"/>
+        <polygon points="56,33 62,20 50,29" fill="#CC3333"/>
+        <ellipse cx="40" cy="50" rx="12" ry="10" fill="#FFF0D0"/>
+        <circle cx="34" cy="42" r="4" fill="white"/><circle cx="46" cy="42" r="4" fill="white"/>
+        <circle cx="35" cy="43" r="2.5" fill="#2C1810"/><circle cx="47" cy="43" r="2.5" fill="#2C1810"/>
+        <circle cx="36" cy="42" r="1" fill="white"/><circle cx="48" cy="42" r="1" fill="white"/>
+        <ellipse cx="40" cy="50" rx="4" ry="3" fill="#CC3333"/>
+        <path d="M35,53 Q40,57 45,53" stroke="#2C1810" stroke-width="1.5" fill="none" stroke-linecap="round"/>
+        <ellipse cx="18" cy="70" rx="8" ry="6" fill="#E87722" transform="rotate(-20,18,70)"/>
+        <ellipse cx="62" cy="68" rx="8" ry="6" fill="#E87722" transform="rotate(20,62,68)"/>
+      </svg>
+      <div class="fox-bubble" id="fox-final">Du hast großartig mitgemacht! Demokratie bedeutet: Zusammen entscheiden! 🌟</div>
+    </div>
+
+    <button class="btn btn-green" onclick="restartGame()">Nochmal spielen 🔄</button>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  CONFIG — these placeholders are replaced at build time
+//  by Cloudflare Pages using your encrypted environment variables.
+//  Never put real values here — keep this file safe to be public.
+// ══════════════════════════════════════════════════════════════
+const WORKER_URL    = 'https://vote.ma5samhatton.workers.dev/';
+const CLIENT_SECRET = 'ThisIsWhyWeSiege43254!';
+
+// Helper: call Claude via the Worker proxy
+async function callClaude(prompt, maxTokens = 1000) {
+  const res = await fetch(WORKER_URL, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Client-Secret': CLIENT_SECRET,
+    },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: maxTokens,
+      messages: [{ role: 'user', content: prompt }]
+    })
+  });
+  const data = await res.json();
+  const text = data.content.map(b => b.text || '').join('');
+  return JSON.parse(text.replace(/```json|```/g, '').trim());
+}
+
+// ══════════════════════════════════════════════════════════════
+//  GAME STATE
+// ══════════════════════════════════════════════════════════════
+const STATE = {
+  playerName: '',
+  playerRole: null,
+  round: 1,
+  maxRounds: 3,
+  budget: 1000,
+  happiness: 70,
+  coins: 1000,
+  currentScenario: null,
+  currentOptions: [],
+  selectedOption: null,
+  voteResults: [],
+  winnerOption: null,
+  decisions: [],   // history for final summary
+};
+
+const ROLES = [
+  { id:'buerger',  name:'Bürgermeister', icon:'🦊', hint:'Du leitest das Dorf und hast den Überblick über alles!', roleHint:'Als Bürgermeister siehst du, wie jede Entscheidung das gesamte Dorf beeinflusst.' },
+  { id:'finanzen', name:'Finanzen',       icon:'💰', hint:'Du verwaltest das Dorfbudget und achtest auf die Kosten!', roleHint:'Als Finanzexperte siehst du genau, wie viel jede Option kostet.' },
+  { id:'bau',      name:'Bau',            icon:'🔨', hint:'Du planst neue Gebäude und Infrastruktur im Dorf!', roleHint:'Als Bauexperte weißt du, was technisch möglich ist und wie lange es dauert.' },
+  { id:'umwelt',   name:'Umwelt',         icon:'🌱', hint:'Du schützt die Natur und sorgst für Nachhaltigkeit!', roleHint:'Als Umweltbeauftragte siehst du die ökologischen Auswirkungen jeder Wahl.' },
+  { id:'soziales', name:'Soziales',       icon:'👥', hint:'Du kümmerst dich um das Wohlbefinden aller Dorfbewohner!', roleHint:'Als Sozialarbeiterin siehst du, wer von jeder Entscheidung profitiert oder leidet.' },
+];
+
+// ══════════════════════════════════════════════════════════════
+//  SCREEN NAVIGATION
+// ══════════════════════════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  SCREEN 1 → 2: WELCOME
+// ══════════════════════════════════════════════════════════════
+function goToRoles() {
+  const name = document.getElementById('player-name').value.trim();
+  if (!name) { document.getElementById('player-name').focus(); return; }
+  STATE.playerName = name;
+  buildRoleGrid();
+  showScreen('screen-roles');
+}
+
+function buildRoleGrid() {
+  const grid = document.getElementById('roles-grid');
+  grid.innerHTML = ROLES.map(r => `
+    <div class="role-card" id="role-${r.id}" onclick="selectRole('${r.id}')">
+      <span class="role-icon">${r.icon}</span>
+      <div class="role-name">${r.name}</div>
+    </div>
+  `).join('');
+}
+
+function selectRole(id) {
+  document.querySelectorAll('.role-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('role-'+id).classList.add('selected');
+  STATE.playerRole = ROLES.find(r => r.id === id);
+  document.getElementById('fox-role-text').textContent = STATE.playerRole.hint;
+  const btn = document.getElementById('btn-confirm-role');
+  btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+}
+
+async function confirmRole() {
+  if (!STATE.playerRole) return;
+  document.getElementById('coin-box').style.display = 'flex';
+  updateStats();
+  await startRound();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  ROUND LOGIC
+// ══════════════════════════════════════════════════════════════
+async function startRound() {
+  STATE.selectedOption = null;
+  showScreen('screen-scenario');
+  document.getElementById('round-indicator').textContent = `Runde ${STATE.round} von ${STATE.maxRounds}`;
+  updateStats();
+
+  // Reset option list
+  document.getElementById('options-list').innerHTML = `
+    <div class="cream-card" style="text-align:center">
+      <div class="loading-dots"><span></span><span></span><span></span></div>
+      <div style="font-family:'Fredoka One',cursive;color:#A0701A;margin-top:6px">KI denkt nach...</div>
+    </div>`;
+  document.getElementById('fox-scenario-hint').textContent = 'Ich hole die Vorschläge...';
+  document.getElementById('btn-vote').style.opacity = '0.5';
+  document.getElementById('btn-vote').style.pointerEvents = 'none';
+
+  // Fetch scenario + options from Claude
+  await fetchScenarioAndOptions();
+}
+
+// ══════════════════════════════════════════════════════════════
+//  CLAUDE API CALL: SCENARIO + OPTIONS
+// ══════════════════════════════════════════════════════════════
+async function fetchScenarioAndOptions() {
+  const roleInfo = STATE.playerRole;
+  const historyText = STATE.decisions.length > 0
+    ? 'Bisherige Entscheidungen: ' + STATE.decisions.map(d => `"${d.optionTitle}" (${d.scenarioTitle})`).join(', ')
+    : 'Erste Runde, noch keine Entscheidungen.';
+
+  const prompt = `Du bist der KI-Spielleiter von VoteVille, einem Demokratie-Lernspiel für Jugendliche (12-17 Jahre). 
+Dorf-Status: Budget=${STATE.budget} Münzen, Glück=${STATE.happiness}%, Runde ${STATE.round} von ${STATE.maxRounds}.
+Spieler-Rolle: ${roleInfo.name} (${roleInfo.id}).
+${historyText}
+
+Erstelle GENAU dieses JSON-Objekt (nur JSON, kein Text davor/danach):
+{
+  "scenario": {
+    "emoji": "[passendes Emoji]",
+    "title": "[kurzer dramatischer Titel, max 8 Wörter]",
+    "description": "[1-2 Sätze was im Dorf passiert ist, kindgerecht]"
+  },
+  "options": [
+    {
+      "emoji": "[Emoji]",
+      "title": "[Optionsname, max 5 Wörter]",
+      "description": "[Was diese Option bedeutet, 1 Satz]",
+      "cost": [Zahl zwischen 100-500],
+      "roleHint": "[Spezifischer Hinweis für die Rolle ${roleInfo.name}, 1 kurzer Satz]",
+      "tradeoff": "[Das wichtigste Risiko dieser Option, 1 Satz]"
+    },
+    { zweite Option... },
+    { dritte Option... }
+  ],
+  "foxHint": "[Finn der Fuchs fragt eine Denk-Frage an die Spieler, max 20 Wörter, Deutsch]"
+}
+
+Regeln:
+- Szenarien sollen realistisch für ein kleines Dorf sein (Schule, Park, Straße, Markt, Energie, Wasser etc.)
+- Die 3 Optionen müssen echte Wertekonflikte darstellen (günstig vs. gut, schnell vs. nachhaltig, etc.)
+- Keine Option soll eindeutig "richtig" oder "falsch" sein
+- Runde ${STATE.round}: ${STATE.round===1?'Einfach und klar':STATE.round===2?'Etwas komplexer, Budgetdruck beachten':'Verbinde mit früheren Entscheidungen, zeige Konsequenzen'}
+- Antworte NUR mit validem JSON`;
+
+  try {
+    const parsed = await callClaude(prompt, 1000);
+    renderScenario(parsed);
+  } catch(e) {
+    // Fallback scenarios if API fails
+    const fallbacks = [
+      {
+        scenario: { emoji:'🏫', title:'Die alte Schule bröckelt!', description:'Das Schulgebäude ist 80 Jahre alt. Der Dach leckt, und die Heizung fällt aus. Die Eltern machen sich Sorgen.' },
+        options: [
+          { emoji:'🏗️', title:'Neue moderne Schule bauen', description:'Komplett neu bauen – modern, energieeffizient, mit Turnhalle.', cost:500, roleHint:'Als Bürgermeister: Das wäre ein Zeichen des Fortschritts für das ganze Dorf.', tradeoff:'Das Budget wird fast leer – was passiert beim nächsten Problem?' },
+          { emoji:'🔧', title:'Alte Schule renovieren', description:'Dach und Heizung reparieren, Klassen auffrischen.', cost:200, roleHint:'Als Bürgermeister: Spart Geld, aber ist es genug für die nächsten 20 Jahre?', tradeoff:'In 10 Jahren könnte wieder eine Renovierung nötig sein.' },
+          { emoji:'🚌', title:'Mit Nachbarschule fusionieren', description:'Kinder fahren zur Schule im Nachbardorf. Die alte Schule wird Gemeinschaftshaus.', cost:100, roleHint:'Als Bürgermeister: Spart am meisten, aber die Gemeinschaft könnte leiden.', tradeoff:'Längere Schulwege für alle Kinder – besonders für jüngere.' },
+        ],
+        foxHint:'Wenn du das Budget heute ausgibst – was passiert, wenn morgen etwas Schlimmeres kommt?'
+      },
+      {
+        scenario: { emoji:'🌳', title:'Der Dorfplatz ist verwahrlost!', description:'Der alte Marktplatz ist kaputt und hässlich. Die Bewohner treffen sich kaum noch. Der Zusammenhalt leidet.' },
+        options: [
+          { emoji:'🏞️', title:'Großen Park mit Spielplatz', description:'Grüner Park, Bänke, Spielgeräte für Kinder und Treffpunkt für Alle.', cost:350, roleHint:'Als Bürgermeister: Ein schöner Park zieht neue Familien ins Dorf.', tradeoff:'Viel Platz für den Park – andere Bauprojekte müssen warten.' },
+          { emoji:'🛒', title:'Kleinen Wochenmarkt einrichten', description:'Jeden Samstag Markt mit lokalen Produkten und Musik.', cost:150, roleHint:'Als Bürgermeister: Fördert lokale Wirtschaft und Gemeinschaft.', tradeoff:'Braucht freiwillige Helfer – wer macht das langfristig?' },
+          { emoji:'⛲', title:'Brunnen und Sitzecken', description:'Schöner Brunnen, gepflasterter Platz, Bänke für Gespräche.', cost:200, roleHint:'Als Bürgermeister: Einfach aber wirkungsvoll für den Dorfcharakter.', tradeoff:'Kein Spielbereich für Kinder – die brauchen etwas Eigenes.' },
+        ],
+        foxHint:'Wer im Dorf würde am meisten von jedem Vorschlag profitieren – und wer am wenigsten?'
+      },
+      {
+        scenario: { emoji:'💡', title:'Das Dorf braucht saubere Energie!', description:'Die Stromrechnung des Dorfes wird immer teurer. Gleichzeitig will das Dorf umweltfreundlicher werden.' },
+        options: [
+          { emoji:'☀️', title:'Solaranlage auf Gemeindedach', description:'Solarplatten auf allen öffentlichen Gebäuden – Strom für das Dorf.', cost:400, roleHint:'Als Bürgermeister: Langfristig spart das Geld, aber hohe Anfangskosten.', tradeoff:'Große Investition jetzt – Ersparnis erst in 5-8 Jahren.' },
+          { emoji:'🌬️', title:'Kleines Windrad am Hügel', description:'Ein Windrad produziert sauberen Strom, sichtbar von überall.', cost:300, roleHint:'Als Bürgermeister: Manche Bewohner mögen das Windrad nicht sehen.', tradeoff:'Nicht alle Bewohner wollen ein Windrad in der Landschaft.' },
+          { emoji:'🌿', title:'Energiesparprogramm starten', description:'LED-Beleuchtung, Dämmung, Bewusstseins-Kampagne für alle.', cost:150, roleHint:'Als Bürgermeister: Günstigste Option, aber braucht Mitmachen von allen.', tradeoff:'Nur wirksam wenn alle mitmachen – was wenn manche es nicht tun?' },
+        ],
+        foxHint:'Wäre es fair, alle Bewohner für das teuerste Projekt zahlen zu lassen, auch wenn es ihnen nicht gefällt?'
+      },
+    ];
+    const fb = fallbacks[(STATE.round-1) % fallbacks.length];
+    renderScenario(fb);
+  }
+}
+
+function renderScenario(data) {
+  STATE.currentScenario = data.scenario;
+  STATE.currentOptions = data.options;
+
+  document.getElementById('sc-emoji').textContent = data.scenario.emoji;
+  document.getElementById('sc-title').textContent = data.scenario.title;
+  document.getElementById('sc-desc').textContent = data.scenario.description;
+  document.getElementById('fox-scenario-hint').textContent = data.foxHint || 'Denk gut nach – jede Entscheidung hat Konsequenzen!';
+
+  const list = document.getElementById('options-list');
+  list.innerHTML = data.options.map((opt, i) => `
+    <div class="option-card" id="opt-${i}" onclick="selectOption(${i})">
+      <div class="option-num">${i+1}</div>
+      <div class="option-content">
+        <div class="option-title">${opt.emoji} ${opt.title}</div>
+        <div class="option-desc">${opt.description}</div>
+        <div class="option-desc" style="color:#888;margin-top:2px">💰 Kosten: ${opt.cost} Münzen</div>
+        <div class="option-role-hint">${STATE.playerRole.icon} ${opt.roleHint}</div>
+        <div class="option-desc" style="color:#CC6666;margin-top:2px">⚠️ ${opt.tradeoff}</div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function selectOption(i) {
+  document.querySelectorAll('.option-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('opt-'+i).classList.add('selected');
+  STATE.selectedOption = i;
+  const btn = document.getElementById('btn-vote');
+  btn.style.opacity = '1'; btn.style.pointerEvents = 'auto';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  VOTING
+// ══════════════════════════════════════════════════════════════
+function castVote() {
+  if (STATE.selectedOption === null) return;
+  showScreen('screen-voting');
+  simulateVoting();
+}
+
+async function simulateVoting() {
+  const n = STATE.currentOptions.length;
+  // Player's choice gets a boost, others share the rest
+  const playerChoice = STATE.selectedOption;
+  let pcts = STATE.currentOptions.map((_, i) => {
+    if (i === playerChoice) return 35 + Math.floor(Math.random()*25); // 35–60%
+    return 10 + Math.floor(Math.random()*25); // 10–35%
+  });
+  // Normalize
+  const total = pcts.reduce((a,b)=>a+b,0);
+  pcts = pcts.map(p => Math.round(p/total*100));
+  // Ensure sums to 100
+  const diff = 100 - pcts.reduce((a,b)=>a+b,0);
+  pcts[0] += diff;
+
+  STATE.voteResults = pcts;
+  const winnerIdx = pcts.indexOf(Math.max(...pcts));
+  STATE.winnerOption = winnerIdx;
+
+  // Render live tally
+  const tally = document.getElementById('live-tally');
+  tally.innerHTML = STATE.currentOptions.map((opt,i) => `
+    <div class="tally-row" style="margin-bottom:8px">
+      <div class="tally-label">${opt.emoji} ${opt.title}</div>
+      <div class="tally-count" id="tally-${i}">0%</div>
+    </div>
+    <div style="height:10px;background:rgba(255,255,255,0.2);border-radius:99px;margin-bottom:12px;overflow:hidden">
+      <div id="tally-bar-${i}" style="height:100%;background:#FFD700;border-radius:99px;width:0%;transition:width 0.8s ease"></div>
+    </div>
+  `).join('');
+
+  // Animate tallies
+  await sleep(800);
+  for(let i=0;i<n;i++){
+    await sleep(400);
+    document.getElementById('tally-'+i).textContent = pcts[i]+'%';
+    document.getElementById('tally-bar-'+i).style.width = pcts[i]+'%';
+  }
+
+  await sleep(1200);
+
+  // Apply consequences
+  const winner = STATE.currentOptions[winnerIdx];
+  STATE.budget -= winner.cost;
+  STATE.happiness = Math.min(100, Math.max(10, STATE.happiness + (Math.random()>0.5?8:-4)));
+  STATE.coins += 50;
+  updateStats();
+
+  STATE.decisions.push({
+    round: STATE.round,
+    scenarioTitle: STATE.currentScenario.title,
+    optionTitle: winner.title,
+    optionEmoji: winner.emoji,
+    cost: winner.cost,
+  });
+
+  // Fetch consequence text
+  await showResults(pcts, winnerIdx);
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RESULTS + CONSEQUENCE
+// ══════════════════════════════════════════════════════════════
+async function showResults(pcts, winnerIdx) {
+  showScreen('screen-results');
+
+  const resultsList = document.getElementById('results-list');
+  resultsList.innerHTML = STATE.currentOptions.map((opt,i) => `
+    <div class="vote-result-card ${i===winnerIdx?'winner':'loser'}">
+      <div class="vr-header">
+        <span style="font-size:1.4rem">${opt.emoji}</span>
+        <div class="vr-title">${i===winnerIdx?'🏆 Gewinner: ':''}${opt.title}</div>
+        <div class="vr-pct">${pcts[i]}%</div>
+      </div>
+      ${i===winnerIdx?'<div class="stars">⭐⭐⭐</div>':''}
+      <div class="vote-bar-track">
+        <div class="vote-bar-fill" style="width:0%" id="res-bar-${i}"></div>
+      </div>
+    </div>
+  `).join('');
+
+  setTimeout(()=>{
+    STATE.currentOptions.forEach((_,i)=>{
+      document.getElementById('res-bar-'+i).style.width = pcts[i]+'%';
+    });
+  }, 100);
+
+  // Fetch AI consequence
+  await fetchConsequence(winnerIdx);
+}
+
+async function fetchConsequence(winnerIdx) {
+  const winner = STATE.currentOptions[winnerIdx];
+  document.getElementById('conseq-text').innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+  const prompt = `VoteVille Spielleiter. Das Dorf hat gerade abgestimmt.
+Szenario: "${STATE.currentScenario.title}"
+Gewinnende Entscheidung: "${winner.title}" (${winner.description})
+Kosten: ${winner.cost} Münzen. Neues Budget: ${STATE.budget}.
+Dorf-Glück vorher: ${STATE.happiness}%.
+
+Antworte NUR mit validem JSON:
+{
+  "emoji": "[1-2 Emojis die die Konsequenz zeigen]",
+  "consequence": "[2-3 lebendige Sätze was im Dorf jetzt passiert. Konkret, bildreich, kindgerecht. Zeige 1 positive UND 1 überraschende negative Folge.]"
+}`;
+
+  try {
+    const parsed = await callClaude(prompt, 300);
+    document.getElementById('conseq-emoji').textContent = parsed.emoji;
+    document.getElementById('conseq-text').textContent = parsed.consequence;
+  } catch(e) {
+    const winner = STATE.currentOptions[winnerIdx];
+    document.getElementById('conseq-emoji').textContent = '🏡✨';
+    document.getElementById('conseq-text').textContent = `Das Dorf hat "${winner.title}" gewählt! Die Dorfbewohner sind gespannt, was als nächstes kommt. Doch einige fragen sich schon: War das wirklich die beste Entscheidung?`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  REFLECTION
+// ══════════════════════════════════════════════════════════════
+async function goToReflection() {
+  showScreen('screen-reflect');
+  document.getElementById('btn-ja').classList.remove('selected');
+  document.getElementById('btn-nee').classList.remove('selected');
+  document.getElementById('reflect-response').style.display = 'none';
+  document.getElementById('btn-next-round').style.display = 'none';
+
+  await fetchReflectionQuestion();
+}
+
+async function fetchReflectionQuestion() {
+  document.getElementById('fox-reflect-question').innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+  const winner = STATE.currentOptions[STATE.winnerOption];
+  const prompt = `VoteVille Lernspiel, Fuchs Finn stellt eine Reflexionsfrage.
+Entscheidung getroffen: "${winner.title}" für das Szenario "${STATE.currentScenario.title}".
+Spieler-Rolle: ${STATE.playerRole.name}.
+
+Antworte NUR mit validem JSON:
+{
+  "question": "[Eine offene Denk-Frage von Finn dem Fuchs, max 25 Wörter, Deutsch, kindgerecht, fragt nach Perspektiven oder Konsequenzen die man nicht sofort sieht]"
+}`;
+
+  try {
+    const parsed = await callClaude(prompt, 150);
+    document.getElementById('fox-reflect-question').textContent = parsed.question;
+  } catch(e) {
+    document.getElementById('fox-reflect-question').textContent = 'Hast du auch daran gedacht, wer von dieser Entscheidung vielleicht NICHT profitiert?';
+  }
+}
+
+async function reflectVote(choice) {
+  document.getElementById('btn-ja').classList.remove('selected');
+  document.getElementById('btn-nee').classList.remove('selected');
+  document.getElementById('btn-'+choice).classList.add('selected');
+
+  document.getElementById('reflect-response').style.display = 'block';
+  document.getElementById('reflect-response-text').innerHTML = '<div class="loading-dots"><span></span><span></span><span></span></div>';
+
+  const winner = STATE.currentOptions[STATE.winnerOption];
+  const prompt = `Finn der Fuchs in VoteVille reagiert auf die Antwort eines Jugendlichen (12-17 Jahre).
+Szenario: "${STATE.currentScenario.title}", Entscheidung: "${winner.title}".
+Spieler hat geantwortet: "${choice === 'ja' ? 'Ja, die Entscheidung war gut' : 'Nein, die Entscheidung war nicht gut'}".
+
+Antworte NUR mit validem JSON:
+{
+  "response": "[Finn antwortet empathisch, bestätigt die Perspektive, fügt aber eine neue Denkanregung hinzu. Max 40 Wörter, Deutsch, warm und freundlich, endet mit einem 🦊 Emoji]"
+}`;
+
+  try {
+    const parsed = await callClaude(prompt, 200);
+    document.getElementById('reflect-response-text').textContent = parsed.response;
+  } catch(e) {
+    document.getElementById('reflect-response-text').textContent = choice==='ja'
+      ? 'Super! Gute Demokratie bedeutet, für die Mehrheit UND für Einzelne zu denken. Beim nächsten Mal noch mehr auf alle achten! 🦊'
+      : 'Interessant! Manchmal gibt es keine perfekte Lösung – nur Kompromisse. Das ist echte Demokratie! 🦊';
+  }
+
+  document.getElementById('btn-next-round').style.display = 'flex';
+}
+
+// ══════════════════════════════════════════════════════════════
+//  NEXT ROUND / GAME OVER
+// ══════════════════════════════════════════════════════════════
+function nextRound() {
+  STATE.round++;
+  if (STATE.round > STATE.maxRounds) {
+    showGameOver();
+  } else {
+    startRound();
+  }
+}
+
+async function showGameOver() {
+  showScreen('screen-gameover');
+
+  // Final stats
+  document.getElementById('final-stats').innerHTML = `
+    <div class="stat-pill">🏡 Glück: ${STATE.happiness}%</div>
+    <div class="stat-pill">🪙 Budget: ${STATE.budget}</div>
+    <div class="stat-pill">🪙 Münzen: ${STATE.coins}</div>
+  `;
+
+  const icon = STATE.happiness >= 70 ? '🌟' : STATE.happiness >= 50 ? '🏡' : '😟';
+  document.getElementById('final-village-icon').textContent = icon;
+
+  const decList = document.getElementById('final-decisions-list');
+  decList.innerHTML = STATE.decisions.map(d => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px;background:rgba(200,146,42,0.1);border-radius:10px">
+      <span style="font-size:1.4rem">${d.optionEmoji}</span>
+      <div>
+        <div style="font-family:'Fredoka One',cursive;font-size:0.9rem;color:var(--text-dark)">Runde ${d.round}: ${d.optionTitle}</div>
+        <div style="font-size:0.78rem;color:var(--text-mid);font-weight:600">${d.scenarioTitle} · -${d.cost} Münzen</div>
+      </div>
+    </div>
+  `).join('');
+
+  // AI final message
+  const prompt = `Finn der Fuchs gibt eine persönliche Abschluss-Nachricht für ${STATE.playerName} (Rolle: ${STATE.playerRole.name}).
+Entscheidungen: ${STATE.decisions.map(d=>d.optionTitle).join(', ')}.
+Dorf-Glück: ${STATE.happiness}%, Budget übrig: ${STATE.budget}.
+
+Antworte NUR mit validem JSON:
+{
+  "message": "[Persönliche Nachricht von Finn, 2-3 Sätze, lobt was gut war, gibt einen Tipp für echte Demokratie. Nennt den Namen ${STATE.playerName}. Endet mit Emoji. Deutsch, herzlich]"
+}`;
+
+  try {
+    const parsed = await callClaude(prompt, 250);
+    document.getElementById('fox-final').textContent = parsed.message;
+  } catch(e) {
+    document.getElementById('fox-final').textContent = `Super gespielt, ${STATE.playerName}! Du hast gezeigt, dass Demokratie bedeutet: Entscheiden, Konsequenzen tragen und wieder neu anfangen. Das ist echter Bürgersinn! 🦊🌟`;
+  }
+}
+
+// ══════════════════════════════════════════════════════════════
+//  RESTART
+// ══════════════════════════════════════════════════════════════
+function restartGame() {
+  STATE.playerName = '';
+  STATE.playerRole = null;
+  STATE.round = 1;
+  STATE.budget = 1000;
+  STATE.happiness = 70;
+  STATE.coins = 1000;
+  STATE.currentScenario = null;
+  STATE.currentOptions = [];
+  STATE.selectedOption = null;
+  STATE.voteResults = [];
+  STATE.winnerOption = null;
+  STATE.decisions = [];
+  document.getElementById('player-name').value = '';
+  document.getElementById('coin-box').style.display = 'none';
+  showScreen('screen-welcome');
+}
+
+// ══════════════════════════════════════════════════════════════
+//  HELPERS
+// ══════════════════════════════════════════════════════════════
+function updateStats() {
+  document.getElementById('stat-happiness').textContent = STATE.happiness;
+  document.getElementById('stat-budget').textContent = STATE.budget;
+  document.getElementById('coin-display').textContent = STATE.coins;
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// Enter key on name field
+document.getElementById('player-name').addEventListener('keydown', e => {
+  if (e.key === 'Enter') goToRoles();
+});
+</script>
+</body>
+</html>
